@@ -89,10 +89,10 @@ function replaceWordsInNode(textNode) {
     }
 }
 
-// Toggle on click
 document.addEventListener("click", e => {
-    const el = e.target;
-    if (!el.classList.contains("chinese-word")) return;
+    console.log(e.target);
+    const el = e.target.closest('.chinese-word');
+    if (!el) return;
 
     if (el.dataset.state === "chinese") {
         el.innerHTML = el.dataset.original;
