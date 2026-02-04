@@ -3,10 +3,23 @@ let replacementsDone = 0;
 const MAX_REPLACEMENTS_PER_PAGE = 8;
 
 // Load local dictionary
-fetch(browser.runtime.getURL("dic.json"))
+fetch(browser.runtime.getURL("hsk-level-1.json"))
     .then(res => res.json())
-    .then(dict => {
-        DICTIONARY = dict;
+    .then(hskData => {
+        // Convert HSK array to lookup dictionary
+        DICTIONARY = {};
+        hskData.forEach(entry => {
+            // Map each English translation to the Chinese data
+            entry.translations.forEach(translation => {
+                const key = translation.toLowerCase().trim();
+                // Store the first translation as the primary meaning
+                DICTIONARY[key] = {
+                    chinese: entry.hanzi,
+                    pinyin: entry.pinyin,
+                    meaning: entry.translations[0]
+                };
+            });
+        });
         startReplacement();
     });
 
@@ -90,11 +103,11 @@ function replaceWordsInNode(textNode) {
 }
 
 document.addEventListener("click", e => {
-    console.log(e.target);
     const el = e.target.closest('.chinese-word');
     if (!el) return;
 
     if (el.dataset.state === "chinese") {
+        console.log(e.target);
         el.innerHTML = el.dataset.original;
         el.dataset.state = "original";
         el.title = el.dataset.meaning;
