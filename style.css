@@ -1,52 +1,52 @@
 .chinese-word {
-  cursor: pointer;
-  font-weight: 600;
-  color: #c0392b;
-  border-bottom: 1px dotted #c0392b;
-  background: linear-gradient(120deg, #fff9e6, #ffeaa7);
-  padding: 2px 4px;
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(192, 57, 43, 0.1);
-  display: inline-block;
-  margin: 0 1px;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(192, 57, 43, 0.2);
+    cursor: pointer;
+    font-weight: 600;
+    color: #c0392b;
+    border-bottom: 1px dotted #c0392b;
+    background: linear-gradient(120deg, #fff9e6, #ffeaa7);
+    padding: 2px 4px;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(192, 57, 43, 0.1);
+    display: inline-block;
+    margin: 0 1px;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(192, 57, 43, 0.2);
 }
 
 .chinese-word:hover {
-  background: linear-gradient(120deg, #fff3cd, #ffd32a);
-  box-shadow: 0 2px 6px rgba(192, 57, 43, 0.2);
-  transform: translateY(-1px);
+    background: linear-gradient(120deg, #fff3cd, #ffd32a);
+    box-shadow: 0 2px 6px rgba(192, 57, 43, 0.2);
+    transform: translateY(-1px);
 }
 
 .chinese-character {
-  display: block;
-  font-size: 1em;
-  line-height: 1.2;
-  font-weight: 700;
+    display: block;
+    font-size: 1em;
+    line-height: 1.2;
+    font-weight: 700;
 }
 
 .pinyin {
-  display: block;
-  font-size: 0.75em;
-  color: #7f8c8d;
-  font-weight: 500;
-  line-height: 1;
-  margin-top: 1px;
-  font-style: italic;
+    display: block;
+    font-size: 0.75em;
+    color: #7f8c8d;
+    font-weight: 500;
+    line-height: 1;
+    margin-top: 1px;
+    font-style: italic;
 }
 
 .chinese-word[data-state="original"] {
-  background: transparent;
-  color: inherit;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  margin: 0;
-  font-weight: normal;
+    background: transparent;
+    color: inherit;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    font-weight: normal;
 }
 
 .chinese-word[data-state="original"]:hover {
-  background: rgba(192, 57, 43, 0.1);
-  transform: none;
+    background: rgba(192, 57, 43, 0.1);
+    transform: none;
 }
