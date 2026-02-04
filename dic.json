@@ -1,0 +1,27 @@
+{
+  "world": {
+    "chinese": "世界",
+    "pinyin": "shì jiè",
+    "meaning": "world"
+  },
+  "learn": {
+    "chinese": "学习",
+    "pinyin": "xué xí",
+    "meaning": "learn"
+  },
+  "language": {
+    "chinese": "语言",
+    "pinyin": "yǔ yán",
+    "meaning": "language"
+  },
+  "time": {
+    "chinese": "时间",
+    "pinyin": "shí jiān",
+    "meaning": "time"
+  },
+  "life": {
+    "chinese": "生活",
+    "pinyin": "shēng huó",
+    "meaning": "life"
+  }
+}
