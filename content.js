@@ -1,6 +1,7 @@
 let DICTIONARY = {};
 let replacementsDone = 0;
-const MAX_REPLACEMENTS_PER_PAGE = 50; // Increased to allow more translations
+const MAX_REPLACEMENTS_PER_PAGE = 25; // Increased to allow more translations
+const RANDOM_REPLACEMENT_RATE = 0.4; // 40% of matches will be replaced for better learning
 
 // Browser API compatibility
 const browserAPI = (() => {
@@ -269,7 +270,7 @@ function replaceWordsInNode(textNode) {
         if (
             DICTIONARY[key] &&
             replacementsDone < MAX_REPLACEMENTS_PER_PAGE &&
-            Math.random() < 0.25 // 25% chance to replace each occurrence to avoid overwhelming the page
+            Math.random() < RANDOM_REPLACEMENT_RATE
         ) {
             replacementsDone++;
             replaced = true;
