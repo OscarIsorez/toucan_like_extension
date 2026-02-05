@@ -1,7 +1,18 @@
 let DICTIONARY = {};
 let replacementsDone = 0;
 const MAX_REPLACEMENTS_PER_PAGE = 8;
-const browserAPI = window.browser || window.chrome;
+
+// Browser API compatibility
+const browserAPI = (() => {
+    if (typeof browser !== 'undefined' && browser.runtime) {
+        return browser;
+    } else if (typeof chrome !== 'undefined' && chrome.runtime) {
+        return chrome;
+    } else {
+        console.error('No compatible browser API found');
+        return null;
+    }
+})();
 
 const BLOCKED_DOMAINS = [
     "google.",
@@ -13,10 +24,10 @@ const BLOCKED_DOMAINS = [
 // Helper for storage API compatibility
 function getStorage(keys) {
     return new Promise(resolve => {
-        if (window.browser && browser.storage) {
-            browser.storage.local.get(keys).then(resolve);
+        if (browserAPI && browserAPI.storage && browserAPI.storage.local) {
+            browserAPI.storage.local.get(keys, resolve);
         } else {
-            chrome.storage.local.get(keys, resolve);
+            resolve({});
         }
     });
 }
@@ -30,10 +41,16 @@ function init() {
 }
 
 async function loadDictionaries() {
+    if (!browserAPI) {
+        console.error('Browser API not available');
+        return;
+    }
+
     const { selectedLists, savedPersonalWords } = await getStorage(['selectedLists', 'savedPersonalWords']);
 
     // Default to HSK1 if nothing configured
     const listsToLoad = selectedLists || ['hsk1'];
+    console.log('Loading dictionary lists:', listsToLoad);
     DICTIONARY = {};
 
     // Map of list IDs to filenames
@@ -56,6 +73,8 @@ async function loadDictionaries() {
                     const data = await res.json();
                     processDictionaryData(data);
                     console.log(`Loaded ${data.length} words from ${filename}`);
+                } else {
+                    console.error(`Failed to fetch ${filename}: ${res.status}`);
                 }
             } catch (e) {
                 console.error(`Failed to load ${filename}:`, e);
@@ -66,8 +85,10 @@ async function loadDictionaries() {
     // Load Personal words (override HSK)
     if (listsToLoad.includes('personal') && savedPersonalWords && savedPersonalWords.length > 0) {
         processDictionaryData(savedPersonalWords);
+        console.log(`Loaded ${savedPersonalWords.length} personal words`);
     }
 
+    console.log(`Total dictionary size: ${Object.keys(DICTIONARY).length} entries`);
     startReplacement();
 }
 
@@ -86,6 +107,17 @@ function processDictionaryData(data) {
 }
 
 init();
+
+// Listen for storage changes to reload dictionary when settings change
+if (browserAPI && browserAPI.storage && browserAPI.storage.onChanged) {
+    browserAPI.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && (changes.selectedLists || changes.savedPersonalWords)) {
+            console.log('Settings changed, reloading dictionary...');
+            replacementsDone = 0; // Reset replacement counter
+            loadDictionaries();
+        }
+    });
+}
 
 function startReplacement() {
     const textNodes = getTextNodes(document.body);
@@ -135,7 +167,7 @@ function replaceWordsInNode(textNode) {
         if (
             DICTIONARY[key] &&
             replacementsDone < MAX_REPLACEMENTS_PER_PAGE &&
-            Math.random() < 0.25
+            Math.random() < 0.5 // 50% chance to replace each occurrence to avoid overwhelming the page
         ) {
             replacementsDone++;
             replaced = true;

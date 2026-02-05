@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Add auto-save listeners to checkboxes
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', saveChecklistState);
+    });
+
     // Restore personal words
     if (savedPersonalWords) {
         personalWords = savedPersonalWords;
@@ -82,12 +87,14 @@ function addToPersonalList(entry) {
     if (!personalWords.find(w => w.id === entry.id)) {
         personalWords.push(entry);
         updatePersonalDisplay();
+        savePersonalWords(); // Auto-save
     }
 }
 
 function removeFromPersonalList(entryId) {
     personalWords = personalWords.filter(w => w.id !== entryId);
     updatePersonalDisplay();
+    savePersonalWords(); // Auto-save
 }
 
 function updatePersonalDisplay() {
@@ -132,22 +139,30 @@ function displayPersonalWords() {
     });
 }
 
-document.getElementById('clear-personal').addEventListener('click', () => {
-    personalWords = [];
-    updatePersonalDisplay();
-});
-
-// Save functionality
-document.getElementById('save-btn').addEventListener('click', async () => {
+// Auto-save checklist state when checkboxes are toggled
+async function saveChecklistState() {
     const selectedLists = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
         .map(cb => cb.value);
 
-    await browser.storage.local.set({
-        selectedLists,
-        savedPersonalWords: personalWords
-    });
+    await browser.storage.local.set({ selectedLists });
+    console.log('Checklist auto-saved:', selectedLists);
+}
 
+// Auto-save personal words
+async function savePersonalWords() {
+    await browser.storage.local.set({ savedPersonalWords: personalWords });
+    console.log('Personal words auto-saved:', personalWords.length, 'words');
+}
+
+document.getElementById('clear-personal').addEventListener('click', () => {
+    personalWords = [];
+    updatePersonalDisplay();
+    savePersonalWords(); // Auto-save
+});
+
+// Manual save button - now just shows status since everything auto-saves
+document.getElementById('save-btn').addEventListener('click', async () => {
     const status = document.getElementById('status');
-    status.textContent = 'Settings saved! Reload page to apply.';
+    status.textContent = 'All changes are automatically saved!';
     setTimeout(() => status.textContent = '', 2000);
 });
