@@ -1,27 +1,91 @@
 let DICTIONARY = {};
 let replacementsDone = 0;
 const MAX_REPLACEMENTS_PER_PAGE = 8;
+const browserAPI = window.browser || window.chrome;
 
-// Load local dictionary
-fetch(browser.runtime.getURL("hsk-level-1.json"))
-    .then(res => res.json())
-    .then(hskData => {
-        // Convert HSK array to lookup dictionary
-        DICTIONARY = {};
-        hskData.forEach(entry => {
-            // Map each English translation to the Chinese data
-            entry.translations.forEach(translation => {
-                const key = translation.toLowerCase().trim();
-                // Store the first translation as the primary meaning
-                DICTIONARY[key] = {
-                    chinese: entry.hanzi,
-                    pinyin: entry.pinyin,
-                    meaning: entry.translations[0]
-                };
-            });
-        });
-        startReplacement();
+const BLOCKED_DOMAINS = [
+    "google.",
+    "bing.com",
+    "duckduckgo.com",
+    "yahoo.com"
+];
+
+// Helper for storage API compatibility
+function getStorage(keys) {
+    return new Promise(resolve => {
+        if (window.browser && browser.storage) {
+            browser.storage.local.get(keys).then(resolve);
+        } else {
+            chrome.storage.local.get(keys, resolve);
+        }
     });
+}
+
+function init() {
+    if (BLOCKED_DOMAINS.some(d => location.hostname.includes(d))) {
+        return;
+    }
+
+    loadDictionaries();
+}
+
+async function loadDictionaries() {
+    const { selectedLists, savedPersonalWords } = await getStorage(['selectedLists', 'savedPersonalWords']);
+
+    // Default to HSK1 if nothing configured
+    const listsToLoad = selectedLists || ['hsk1'];
+    DICTIONARY = {};
+
+    // Map of list IDs to filenames
+    const hskFiles = {
+        'hsk1': 'hsk/hsk-level-1.json',
+        'hsk2': 'hsk/hsk-level-2.json',
+        'hsk3': 'hsk/hsk-level-3.json',
+        'hsk4': 'hsk/hsk-level-4.json',
+        'hsk5': 'hsk/hsk-level-5.json',
+        'hsk6': 'hsk/hsk-level-6.json'
+    };
+
+    // Load HSK lists
+    for (const [listId, filename] of Object.entries(hskFiles)) {
+        if (listsToLoad.includes(listId)) {
+            try {
+                const url = browserAPI.runtime.getURL(filename);
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    processDictionaryData(data);
+                    console.log(`Loaded ${data.length} words from ${filename}`);
+                }
+            } catch (e) {
+                console.error(`Failed to load ${filename}:`, e);
+            }
+        }
+    }
+
+    // Load Personal words (override HSK)
+    if (listsToLoad.includes('personal') && savedPersonalWords && savedPersonalWords.length > 0) {
+        processDictionaryData(savedPersonalWords);
+    }
+
+    startReplacement();
+}
+
+function processDictionaryData(data) {
+    data.forEach(entry => {
+        entry.translations.forEach(translation => {
+            const key = translation.toLowerCase().trim();
+            // New entries override old ones (Personal list loaded last takes precedence)
+            DICTIONARY[key] = {
+                chinese: entry.hanzi,
+                pinyin: entry.pinyin,
+                meaning: entry.translations[0]
+            };
+        });
+    });
+}
+
+init();
 
 function startReplacement() {
     const textNodes = getTextNodes(document.body);
