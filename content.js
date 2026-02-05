@@ -96,11 +96,12 @@ function processDictionaryData(data) {
     data.forEach(entry => {
         entry.translations.forEach(translation => {
             const key = translation.toLowerCase().trim();
-            // New entries override old ones (Personal list loaded last takes precedence)
+            // Store all available translations for contextual selection
             DICTIONARY[key] = {
                 chinese: entry.hanzi,
                 pinyin: entry.pinyin,
-                meaning: entry.translations[0]
+                allTranslations: entry.translations,
+                primaryMeaning: entry.translations[0] // Keep primary as fallback
             };
         });
     });
@@ -122,6 +123,107 @@ if (browserAPI && browserAPI.storage && browserAPI.storage.onChanged) {
 function startReplacement() {
     const textNodes = getTextNodes(document.body);
     textNodes.forEach(replaceWordsInNode);
+}
+
+// Extract surrounding sentences for context analysis
+function extractContext(textNode, targetWord) {
+    // Get the full text content from parent elements for better context
+    let contextElement = textNode.parentElement;
+
+    // Try to get a larger context (paragraph or container)
+    for (let i = 0; i < 3; i++) {
+        if (contextElement.parentElement &&
+            contextElement.parentElement.textContent.length > contextElement.textContent.length) {
+            contextElement = contextElement.parentElement;
+        } else {
+            break;
+        }
+    }
+
+    const fullText = contextElement.textContent;
+    const sentences = fullText.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+    // Find sentences containing the target word
+    const wordRegex = new RegExp(`\\b${targetWord}\\b`, 'i');
+    const relevantSentences = [];
+
+    for (let i = 0; i < sentences.length; i++) {
+        if (wordRegex.test(sentences[i])) {
+            // Get current sentence and up to 1 sentence before and after
+            const contextSentences = [];
+            if (i > 0) contextSentences.push(sentences[i - 1]);
+            contextSentences.push(sentences[i]);
+            if (i < sentences.length - 1) contextSentences.push(sentences[i + 1]);
+
+            relevantSentences.push(...contextSentences);
+        }
+    }
+
+    return relevantSentences.slice(0, 3).join(' ').toLowerCase();
+}
+
+// Select best translation based on context
+function selectBestTranslation(entry, context, originalWord) {
+    if (!entry.allTranslations || entry.allTranslations.length <= 1) {
+        return entry.primaryMeaning;
+    }
+
+    const contextWords = context.split(/\s+/);
+    const translations = entry.allTranslations;
+
+    // Context-based scoring system
+    const scores = translations.map(translation => {
+        let score = 0;
+        const translationWords = translation.toLowerCase().split(/\s+/);
+
+        // Check for contextual word matches
+        translationWords.forEach(tWord => {
+            // Direct word matches in context
+            if (contextWords.includes(tWord)) {
+                score += 3;
+            }
+
+            // Semantic context patterns
+            if (context.includes('time') && ['time', 'hour', 'moment', 'period'].includes(tWord)) {
+                score += 2;
+            }
+            if (context.includes('money') && ['money', 'cost', 'price', 'pay'].includes(tWord)) {
+                score += 2;
+            }
+            if (context.includes('person') && ['person', 'people', 'man', 'woman'].includes(tWord)) {
+                score += 2;
+            }
+            if (/\\b(eat|food|cook|meal|restaurant)\\b/.test(context) &&
+                ['eat', 'food', 'dish', 'meal', 'cook'].includes(tWord)) {
+                score += 2;
+            }
+            if (/\\b(work|job|office|business)\\b/.test(context) &&
+                ['work', 'job', 'business', 'office'].includes(tWord)) {
+                score += 2;
+            }
+            if (/\\b(go|come|travel|move)\\b/.test(context) &&
+                ['go', 'come', 'travel', 'move', 'arrive'].includes(tWord)) {
+                score += 2;
+            }
+        });
+
+        // Prefer shorter, more common translations
+        if (translation.length < 10) score += 1;
+        if (translation.split(' ').length === 1) score += 0.5;
+
+        return { translation, score };
+    });
+
+    // Sort by score and return best match
+    scores.sort((a, b) => b.score - a.score);
+
+    // If no significant score difference, prefer primary meaning
+    if (scores[0].score === 0 || (scores[0].score - scores[1]?.score || 0) < 1) {
+        return entry.primaryMeaning;
+    }
+
+    console.log(`Context-selected "${scores[0].translation}" for "${originalWord}" (score: ${scores[0].score})`);
+    return scores[0].translation;
 }
 
 function getTextNodes(root) {
@@ -174,14 +276,18 @@ function replaceWordsInNode(textNode) {
 
             const entry = DICTIONARY[key];
 
+            // Extract context and select best translation
+            const context = extractContext(textNode, part);
+            const bestTranslation = selectBestTranslation(entry, context, part);
+
             return `
         <span class="chinese-word"
               data-original="${part}"
               data-chinese="${entry.chinese}"
               data-pinyin="${entry.pinyin}"
-              data-meaning="${entry.meaning}"
+              data-meaning="${bestTranslation}"
               data-state="chinese"
-              title="${entry.meaning}">
+              title="${bestTranslation}">
           <span class="chinese-character">${entry.chinese}</span>
           <span class="pinyin">${entry.pinyin}</span>
         </span>
